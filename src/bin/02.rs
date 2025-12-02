@@ -30,11 +30,13 @@ pub fn part_one(input: &str) -> Option<u64> {
             lo_str = lo_raw.to_string();
             hi_str = hi_raw.to_string();
         } else if len_lo % 2 == 1 {
+            // low limit was odd; replace with lowest value with len = len_hi (1000...)
             lo_str = iter::once('1')
                 .chain(iter::repeat('0').take(len_hi - 1))
                 .collect();
             hi_str = hi_raw.to_string();
         } else {
+            // high limit was odd; replace with highest value with len = len_lo (999...)
             lo_str = lo_raw.to_string();
             hi_str = "9".repeat(len_lo);
         }
@@ -50,10 +52,13 @@ pub fn part_one(input: &str) -> Option<u64> {
             }
             continue;
         } else {
+            // numeric versions of the halves for iteration
             let loh = lo_half.parse::<u64>().unwrap();
             let hih = hi_half.parse::<u64>().unwrap();
             let lo_repeat = lo_half.repeat(2).parse::<u64>().unwrap();
             let hi_repeat = hi_half.repeat(2).parse::<u64>().unwrap();
+            // sometimes the number will land outside the limits due to the last digits
+            // hence, pick the tighter bounds
             let lo_lim = max(lo, lo_repeat);
             let hi_lim = min(hi, hi_repeat);
             for half in loh..hih + 1 {
@@ -70,7 +75,9 @@ pub fn part_one(input: &str) -> Option<u64> {
 fn sum_candidates(lo_raw: String, hi_raw: String) -> u64 {
     let len_lo = lo_raw.len();
     let len_hi = hi_raw.len();
-    // if lens differ, the problem splits into two; recursion?
+    // if lens differ, the problem splits into two; can recursively solve each half
+    // here we obviously use the fact that there is at most len diff of one (verified
+    // on my input)
     if len_lo == len_hi - 1 {
         let lo_1: String = iter::once('1')
             .chain(iter::repeat('0').take(len_hi - 1))
@@ -78,27 +85,21 @@ fn sum_candidates(lo_raw: String, hi_raw: String) -> u64 {
         let hi_2 = "9".repeat(len_lo);
         return sum_candidates(lo_raw, hi_2) + sum_candidates(lo_1, hi_raw);
     }
+    // set up collections and numeric values
     let mut out = 0;
+    // could find doubles, so set up hashset to stop double counting
     let mut found = HashSet::new();
     let lo = lo_raw.parse::<u64>().unwrap();
     let hi = hi_raw.parse::<u64>().unwrap();
     for i in 1..(len_lo / 2) + 1 {
+        // unless mod corresponds, cannot have exact repeats
         if len_lo % (i) != 0 {
             continue;
         }
+        // possible candidate values; take first i
         let lo_lim = lo_raw[0..i].to_string().parse::<u64>().unwrap();
         let hi_lim = hi_raw[0..i].to_string().parse::<u64>().unwrap();
-        if lo_lim == hi_lim {
-            let repeated = lo_lim
-                .to_string()
-                .repeat(len_lo / i)
-                .parse::<u64>()
-                .unwrap();
-            if (lo <= repeated) && (repeated <= hi) && (found.insert(repeated)) {
-                out += repeated;
-            }
-            continue;
-        }
+        // test each possible repeat candidate in the range
         for j in lo_lim..hi_lim + 1 {
             let repeated = j.to_string().repeat(len_lo / i).parse::<u64>().unwrap();
 
