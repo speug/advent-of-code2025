@@ -48,14 +48,14 @@ fn process_move_mod(pos: i32, instruction: &(char, i32)) -> (i32, u64) {
     let new_raw = pos + multiplier * steps;
     let full_rotations = new_raw.div_euclid(100);
     let new_pos = new_raw.rem_euclid(100);
-    let mut clicks = full_rotations.abs() as u64;
+    let mut clicks = full_rotations.unsigned_abs();
     if (new_pos == 0) && (multiplier == -1) {
         clicks += 1;
     }
     if pos == 0 {
         clicks = clicks.saturating_sub(1);
     }
-    (new_pos, clicks)
+    (new_pos, clicks.into())
 }
 
 pub fn part_one(input: &str) -> Option<u64> {

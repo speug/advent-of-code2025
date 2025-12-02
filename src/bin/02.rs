@@ -94,20 +94,16 @@ fn sum_candidates(lo_raw: String, hi_raw: String) -> u64 {
                 .repeat(len_lo / i)
                 .parse::<u64>()
                 .unwrap();
-            if (lo <= repeated) && (repeated <= hi) {
-                if found.insert(repeated) {
-                    out += repeated;
-                }
+            if (lo <= repeated) && (repeated <= hi) && (found.insert(repeated)) {
+                out += repeated;
             }
             continue;
         }
         for j in lo_lim..hi_lim + 1 {
             let repeated = j.to_string().repeat(len_lo / i).parse::<u64>().unwrap();
 
-            if (lo <= repeated) && (repeated <= hi) {
-                if found.insert(repeated) {
-                    out += repeated;
-                }
+            if (lo <= repeated) && (repeated <= hi) && (found.insert(repeated)) {
+                out += repeated;
             }
         }
     }
