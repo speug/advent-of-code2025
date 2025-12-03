@@ -24,7 +24,7 @@ pub fn part_one(input: &str) -> Option<u64> {
             highest_after[i] = max(highest_after[i + 1], bank[i + 1]);
         }
         // then we can just iterate through the list once, trying each bank value in
-        // the tens place and use the precalculate highest_after list to get best
+        // the tens place and use the precalculated highest_after list to get best
         // value for the ones place. You could probably stop early, but all of this
         // is O(n) anyway so good enough.
         let mut best = 0;
