@@ -45,9 +45,7 @@ pub fn part_two(input: &str) -> Option<u64> {
             let mut bumper = bank[i];
             let mut bi = 0;
             while (bi < 12) && (bumper >= best[bi]) {
-                let new_bump = best[bi];
-                best[bi] = bumper;
-                bumper = new_bump;
+                std::mem::swap(&mut best[bi], &mut bumper);
                 bi += 1;
             }
         }
