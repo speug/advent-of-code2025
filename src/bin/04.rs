@@ -45,7 +45,10 @@ pub fn part_one(input: &str) -> Option<u64> {
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    // do the same except in a while loop.
+    // do the same except in a do-while loop.
+    // I also tried this with HashSets. Surprisingly, this grid-based approach performs
+    // better; likely due to some Vec magics.
+    // You may not like it but this is what peak performance looks like.
     let mut grid = parse_input(input);
     let h = grid.len();
     let w = grid[0].len();
