@@ -8,7 +8,7 @@ use chrono::{Datelike, FixedOffset, Utc};
 #[cfg(feature = "today")]
 const SERVER_UTC_OFFSET: i32 = -5;
 
-/// A valid day number of advent (i.e. an integer in range 1 to 25).
+/// A valid day number of advent (i.e. an integer in range 1 to 12).
 ///
 /// # Display
 /// This value displays as a two digit number.
@@ -25,7 +25,7 @@ impl Day {
     /// Creates a [`Day`] from the provided value if it's in the valid range,
     /// returns [`None`] otherwise.
     pub const fn new(day: u8) -> Option<Self> {
-        if day == 0 || day > 25 {
+        if day == 0 || day > 12 {
             return None;
         }
         Some(Self(day))
@@ -43,7 +43,7 @@ impl Day {
     pub fn today() -> Option<Self> {
         let offset = FixedOffset::east_opt(SERVER_UTC_OFFSET * 3600)?;
         let today = Utc::now().with_timezone(&offset);
-        if today.month() == 12 && today.day() <= 25 {
+        if today.month() == 12 && today.day() <= 12 {
             Self::new(u8::try_from(today.day()).ok()?)
         } else {
             None
@@ -115,7 +115,7 @@ impl Iterator for AllDays {
     type Item = Day;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current > 25 {
+        if self.current > 12 {
             return None;
         }
         // NOTE: the iterator starts at 1 and we have verified that the value is not above 25.
@@ -161,19 +161,6 @@ mod tests {
         assert_eq!(iter.next(), Some(Day(10)));
         assert_eq!(iter.next(), Some(Day(11)));
         assert_eq!(iter.next(), Some(Day(12)));
-        assert_eq!(iter.next(), Some(Day(13)));
-        assert_eq!(iter.next(), Some(Day(14)));
-        assert_eq!(iter.next(), Some(Day(15)));
-        assert_eq!(iter.next(), Some(Day(16)));
-        assert_eq!(iter.next(), Some(Day(17)));
-        assert_eq!(iter.next(), Some(Day(18)));
-        assert_eq!(iter.next(), Some(Day(19)));
-        assert_eq!(iter.next(), Some(Day(20)));
-        assert_eq!(iter.next(), Some(Day(21)));
-        assert_eq!(iter.next(), Some(Day(22)));
-        assert_eq!(iter.next(), Some(Day(23)));
-        assert_eq!(iter.next(), Some(Day(24)));
-        assert_eq!(iter.next(), Some(Day(25)));
         assert_eq!(iter.next(), None);
     }
 }
