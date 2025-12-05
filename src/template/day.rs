@@ -39,7 +39,7 @@ impl Day {
 
 #[cfg(feature = "today")]
 impl Day {
-    /// Returns the current day if it's between the 1st and the 25th of december, `None` otherwise.
+    /// Returns the current day if it's between the 1st and the 12th of december, `None` otherwise.
     pub fn today() -> Option<Self> {
         let offset = FixedOffset::east_opt(SERVER_UTC_OFFSET * 3600)?;
         let today = Utc::now().with_timezone(&offset);
@@ -88,18 +88,18 @@ impl Error for DayFromStrError {}
 
 impl Display for DayFromStrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("expecting a day number between 1 and 25")
+        f.write_str("expecting a day number between 1 and 12")
     }
 }
 
 /* -------------------------------------------------------------------------- */
 
-/// An iterator that yields every day of advent from the 1st to the 25th.
+/// An iterator that yields every day of advent from the 1st to the 12th.
 pub fn all_days() -> AllDays {
     AllDays::new()
 }
 
-/// An iterator that yields every day of advent from the 1st to the 25th.
+/// An iterator that yields every day of advent from the 1st to the 12th.
 pub struct AllDays {
     current: u8,
 }
@@ -118,7 +118,7 @@ impl Iterator for AllDays {
         if self.current > 12 {
             return None;
         }
-        // NOTE: the iterator starts at 1 and we have verified that the value is not above 25.
+        // NOTE: the iterator starts at 1 and we have verified that the value is not above 12.
         let day = Day(self.current);
         self.current += 1;
 
@@ -134,7 +134,7 @@ macro_rules! day {
     ($day:expr) => {
         const {
             $crate::template::Day::new($day)
-                .expect("invalid day number, expecting a value between 1 and 25")
+                .expect("invalid day number, expecting a value between 1 and 12")
         }
     };
 }
