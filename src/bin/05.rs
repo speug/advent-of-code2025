@@ -22,8 +22,8 @@ fn parse_input(input: &str) -> (Vec<(u64, u64)>, Vec<u64>) {
 }
 pub fn part_one(input: &str) -> Option<u64> {
     let (mut ranges, mut ids) = parse_input(input);
-    // sorting provides a small speed gain; taking the joining from part 2 is better
-    // than using original, sorted ranges (by like 6 us ":D")
+    // sorting provides a small speed gain; taking the joining from part 2 is even
+    // better than using original, sorted ranges (by like 6 us ":D")
     ranges.sort();
     ids.sort();
     let mut to_join = ranges[0];
@@ -58,6 +58,8 @@ fn join_ranges(r1: (u64, u64), r2: (u64, u64)) -> Option<(u64, u64)> {
     if r1.1 < r2.0 {
         return None;
     } else {
+        // kind of extra as the array is sorted, but can't bother to think about
+        // edge cases
         let new_start = min(r1.0, r2.0);
         let new_end = max(r1.1, r2.1);
         return Some((new_start, new_end));
