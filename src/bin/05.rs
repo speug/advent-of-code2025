@@ -28,12 +28,12 @@ pub fn part_one(input: &str) -> Option<u64> {
     ids.sort();
     let mut to_join = ranges[0];
     let mut joined_ranges = Vec::new();
-    for i in 1..ranges.len() {
-        if let Some(new_range) = join_ranges(to_join, ranges[i]) {
+    for r in ranges.into_iter().skip(1) {
+        if let Some(new_range) = join_ranges(to_join, r) {
             to_join = new_range;
         } else {
             joined_ranges.push(to_join);
-            to_join = ranges[i];
+            to_join = r;
         }
     }
     joined_ranges.push(to_join);
@@ -56,13 +56,13 @@ pub fn part_one(input: &str) -> Option<u64> {
 fn join_ranges(r1: (u64, u64), r2: (u64, u64)) -> Option<(u64, u64)> {
     // assume ranges are sorted (r1 <= r2)
     if r1.1 < r2.0 {
-        return None;
+        None
     } else {
         // kind of extra as the array is sorted, but can't bother to think about
         // edge cases
         let new_start = min(r1.0, r2.0);
         let new_end = max(r1.1, r2.1);
-        return Some((new_start, new_end));
+        Some((new_start, new_end))
     }
 }
 
@@ -71,12 +71,12 @@ pub fn part_two(input: &str) -> Option<u64> {
     ranges.sort();
     let mut to_join = ranges[0];
     let mut joined_ranges = Vec::new();
-    for i in 1..ranges.len() {
-        if let Some(new_range) = join_ranges(to_join, ranges[i]) {
+    for r in ranges.into_iter().skip(1) {
+        if let Some(new_range) = join_ranges(to_join, r) {
             to_join = new_range;
         } else {
             joined_ranges.push(to_join);
-            to_join = ranges[i];
+            to_join = r
         }
     }
     joined_ranges.push(to_join);

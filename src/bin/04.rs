@@ -11,7 +11,7 @@ fn parse_input(input: &str) -> Vec<Vec<char>> {
 }
 
 fn get_accessible_rolls(
-    grid: &Vec<Vec<char>>,
+    grid: &[Vec<char>],
     &height: &usize,
     &width: &usize,
 ) -> Vec<(usize, usize)> {
