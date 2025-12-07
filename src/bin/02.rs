@@ -32,7 +32,7 @@ pub fn part_one(input: &str) -> Option<u64> {
         } else if len_lo % 2 == 1 {
             // low limit was odd; replace with lowest value with len = len_hi (1000...)
             lo_str = iter::once('1')
-                .chain(iter::repeat('0').take(len_hi - 1))
+                .chain(iter::repeat_n('0', len_hi - 1))
                 .collect();
             hi_str = hi_raw.to_string();
         } else {
@@ -80,7 +80,7 @@ fn sum_candidates(lo_raw: String, hi_raw: String) -> u64 {
     // on my input)
     if len_lo == len_hi - 1 {
         let lo_1: String = iter::once('1')
-            .chain(iter::repeat('0').take(len_hi - 1))
+            .chain(iter::repeat_n('0', len_hi - 1))
             .collect();
         let hi_2 = "9".repeat(len_lo);
         return sum_candidates(lo_raw, hi_2) + sum_candidates(lo_1, hi_raw);
@@ -93,7 +93,7 @@ fn sum_candidates(lo_raw: String, hi_raw: String) -> u64 {
     let hi = hi_raw.parse::<u64>().unwrap();
     for i in 1..(len_lo / 2) + 1 {
         // unless mod corresponds, cannot have exact repeats
-        if len_lo % (i) != 0 {
+        if !len_lo.is_multiple_of(i) {
             continue;
         }
         // possible candidate values; take first i
