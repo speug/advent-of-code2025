@@ -65,8 +65,8 @@ fn parse_column_input(input: &str) -> (Vec<Vec<u64>>, Vec<Operator>) {
             }
         }
         if digits.is_empty() {
-            numbers.push(opnums);
-            opnums = Vec::new();
+            numbers.push(opnums.clone());
+            opnums.clear();
         } else {
             opnums.push(digits.iter().fold(0, |acc, elem| acc * 10 + elem));
         }
