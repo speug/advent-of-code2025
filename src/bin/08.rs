@@ -37,7 +37,7 @@ impl DisjointNetwork {
         i
     }
 
-    fn union(&mut self, i: usize, j: usize) -> bool {
+    fn union(&mut self, i: usize, j: usize) {
         let root_i = self.find_subnetwork(i);
         let root_j = self.find_subnetwork(j);
         if root_i != root_j {
@@ -49,9 +49,7 @@ impl DisjointNetwork {
                 self.subnetwork_sizes[root_i] += self.subnetwork_sizes[root_j];
             }
             self.subnetwork_count -= 1;
-            return true;
         }
-        false
     }
 }
 
