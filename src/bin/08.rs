@@ -41,6 +41,7 @@ impl DisjointNetwork {
         let root_i = self.find_subnetwork(i);
         let root_j = self.find_subnetwork(j);
         if root_i != root_j {
+            // smaller to bigger
             if self.subnetwork_sizes[root_i] < self.subnetwork_sizes[root_j] {
                 self.parents[root_i] = root_j;
                 self.subnetwork_sizes[root_j] += self.subnetwork_sizes[root_i];
@@ -90,7 +91,7 @@ pub fn part_one(input: &str) -> Option<u64> {
         network.union(a, b);
     }
     let mut sizes: Vec<u64> = (0..junctions.len())
-        .filter(|&i| network.parents[i] == i)
+        .filter(|&i| network.parents[i] == i) // find only roots
         .map(|i| network.subnetwork_sizes[i])
         .collect();
     sizes.sort_unstable_by(|a, b| b.cmp(a));
