@@ -87,7 +87,7 @@ pub fn part_one(input: &str) -> Option<u64> {
     let connections = get_sorted_connections(&junctions);
     let mut network = DisjointNetwork::new(junctions.len());
     // Uncomment below for actual solution; test uses 10
-    for &((a, b), _) in connections.iter().take(1000) {
+    for &((a, b), _) in connections.iter().take(10) {
         //for &((a, b), _) in connections.iter().take(10) {
         network.union(a, b);
     }
