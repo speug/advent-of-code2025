@@ -93,7 +93,7 @@ fn sum_candidates(lo_raw: String, hi_raw: String) -> u64 {
     let hi = hi_raw.parse::<u64>().unwrap();
     for i in 1..(len_lo / 2) + 1 {
         // unless mod corresponds, cannot have exact repeats
-        if !len_lo.is_multiple_of(i) {
+        if len_lo % i != 0 {
             continue;
         }
         // possible candidate values; take first i

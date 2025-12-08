@@ -37,27 +37,17 @@ fn find_connections(
     junctions: &[JunctionBox],
     num_connections: Option<usize>,
 ) -> Vec<(usize, usize)> {
-    // TODO: return the connections in an ordered format; then 2 should be simple
-    let distance_matrix = distance_matrix(junctions);
-    let mut flat_d: Vec<u64> = distance_matrix
-        .clone()
-        .into_iter()
-        .flatten()
-        .filter(|&x| x > 0)
-        .collect();
-    flat_d.sort();
-    let n_c = num_connections.unwrap_or(flat_d.len() - 1);
-    let max_distance = flat_d[n_c];
-    let mut out = Vec::new();
     let n = junctions.len();
-    for i in 0..n {
-        for j in (i + 1)..n {
-            if distance_matrix[i][j] < max_distance {
-                out.push((i, j));
-            }
+    let distance_matrix = distance_matrix(junctions);
+    let mut flat_d = Vec::new();
+    for (i, row) in distance_matrix.iter().enumerate().take(n) {
+        for (j, d) in row.iter().enumerate().take(n).skip(i + 1) {
+            flat_d.push(((i, j), *d));
         }
     }
-    out
+    flat_d.sort_by(|a, b| a.1.cmp(&b.1));
+    let n_c = num_connections.unwrap_or(flat_d.len() - 1);
+    flat_d.iter().take(n_c).map(|x| x.0).collect()
 }
 
 fn parse_input(input: &str) -> Vec<JunctionBox> {
@@ -95,23 +85,36 @@ fn join_networks(a: usize, b: usize, network: &mut HashMap<usize, JunctionBox>) 
         network
             .entry(s_b)
             .and_modify(|station| station.parent = s_a);
-        let b_size = network[&s_b].network_size;
+        let new_size = network[&s_a].network_size + network[&s_b].network_size;
         network
             .entry(s_a)
-            .and_modify(|station| station.network_size += b_size);
+            .and_modify(|station| station.network_size = new_size);
     }
+}
+
+fn get_network_size(a: usize, network: &mut HashMap<usize, JunctionBox>) -> u64 {
+    let s_a = find_subnetwork(a, network);
+    network[&s_a].network_size
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
     let junctions = parse_input(input);
-    let connections = find_connections(&junctions, Some(10));
+    let connections = find_connections(&junctions, Some(1000));
     let mut network: HashMap<usize, JunctionBox> = junctions.into_iter().enumerate().collect();
     for (a, b) in connections.into_iter() {
         join_networks(a, b, &mut network);
     }
-    let mut network_sizes: Vec<u64> = network.values().map(|x| x.network_size).collect();
-    network_sizes.sort_by(|a, b| b.cmp(a));
-    Some(network_sizes[0] * network_sizes[1] * network_sizes[2])
+    // now need to only collect unique subnetworks
+    let mut network_sizes = HashMap::new();
+    for i in network.clone().keys() {
+        network_sizes.insert(
+            find_subnetwork(*i, &mut network),
+            get_network_size(*i, &mut network),
+        );
+    }
+    let mut sorted_sizes: Vec<u64> = network_sizes.values().cloned().collect();
+    sorted_sizes.sort_by(|a, b| b.cmp(a));
+    Some(sorted_sizes[0] * sorted_sizes[1] * sorted_sizes[2])
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
@@ -120,12 +123,8 @@ pub fn part_two(input: &str) -> Option<u64> {
     let connections = find_connections(&junctions, None);
     let mut network: HashMap<usize, JunctionBox> = junctions.into_iter().enumerate().collect();
     for (a, b) in connections.into_iter() {
-        println!(
-            "Connecting {:?} - {:?}",
-            network[&a].coordinates, network[&b].coordinates
-        );
         join_networks(a, b, &mut network);
-        if (network[&a].network_size == n) || (network[&b].network_size == n) {
+        if get_network_size(a, &mut network) == n {
             return Some((network[&a].coordinates.0 * network[&b].coordinates.0) as u64);
         }
     }

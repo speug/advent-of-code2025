@@ -54,13 +54,12 @@ fn parse_column_input(input: &str) -> (Vec<Vec<u64>>, Vec<Operator>) {
     // parse numbers
     let linechars: Vec<Vec<char>> = lines.iter().map(|s| s.chars().collect()).collect();
     let chars = linechars[0].len();
-    let rows = linechars.len();
     let mut numbers = Vec::new();
     let mut opnums = Vec::new();
     for c in 0..chars {
         let mut digits = Vec::new();
-        for r in 0..rows {
-            if let Some(digit) = linechars[r][c].to_digit(10) {
+        for r in linechars.iter() {
+            if let Some(digit) = r[c].to_digit(10) {
                 digits.push(digit as u64);
             }
         }

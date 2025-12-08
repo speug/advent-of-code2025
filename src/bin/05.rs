@@ -41,9 +41,14 @@ pub fn part_one(input: &str) -> Option<u64> {
     let mut start_idx = 0;
     let n_ranges = joined_ranges.len();
     for id in ids.into_iter() {
-        for i in start_idx..n_ranges {
-            let (lo, hi) = joined_ranges[i];
-            if (lo <= id) && (id <= hi) {
+        for (i, jr) in joined_ranges
+            .iter()
+            .enumerate()
+            .take(n_ranges)
+            .skip(start_idx)
+        {
+            let (lo, hi) = jr;
+            if (*lo <= id) && (id <= *hi) {
                 fresh += 1;
                 start_idx = i;
                 break;
