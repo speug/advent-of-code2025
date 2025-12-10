@@ -156,6 +156,17 @@ pub fn part_two(input: &str) -> Option<u64> {
     let points = parse_input(input);
     let shapes = form_shapes(&points);
     let mut max_area = 0;
+    /*
+    outline for a better solution:
+    1. generate all "intersection points" with a vertical and horisontal sweep.
+       This can be done efficiently with creating ordered lists of edge x and y coords
+       Store these by the line being swept (i.e. in two Vecs). do not include corners?
+    2. generate all rectangles, sort by area
+    3. for each rectangle, check each edge of the rectangle for intersection points;
+       invalidate a rectangle if an edge contains an intersection point
+    4. First valid rectangle wins.
+    */
+
     // uncomment below for solution, the BF solution is for tests to pass
     // looking at the plot of the points, it is clear that only two points are real
     // candidates for one of the corners
