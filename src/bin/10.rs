@@ -5,7 +5,7 @@ advent_of_code::solution!(10);
 
 type Action = Vec<usize>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Lights {
     n: usize,
     s: u16,
@@ -75,7 +75,7 @@ fn bfs(initial: &Lights, goal: &Lights, actions: &[Action]) -> u64 {
             if s_next == *goal {
                 return count + 1;
             }
-            if visited.insert(s_next) {
+            if visited.insert(s_next.s) {
                 queue.push_back((s_next, count + 1));
             }
         }
