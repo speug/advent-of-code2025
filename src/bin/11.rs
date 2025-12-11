@@ -19,7 +19,7 @@ fn parse_input(input: &str) -> HashMap<String, Vec<String>> {
 }
 
 fn dfs_count_paths(graph: &HashMap<String, Vec<String>>, start: &str, end: &str) -> u64 {
-    fn dfs(
+    fn dfs_inner(
         graph: &HashMap<String, Vec<String>>,
         curr: &str,
         end: &str,
@@ -34,26 +34,26 @@ fn dfs_count_paths(graph: &HashMap<String, Vec<String>>, start: &str, end: &str)
         let mut path_count = 0;
         if let Some(neighs) = graph.get(curr) {
             for v in neighs {
-                path_count += dfs(graph, v, end, counts);
+                path_count += dfs_inner(graph, v, end, counts);
             }
         }
         counts.insert(curr.to_string(), path_count);
         path_count
     }
     let mut initial: HashMap<String, u64> = HashMap::new();
-    dfs(graph, start, end, &mut initial)
+    dfs_inner(graph, start, end, &mut initial)
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
     let graph = parse_input(input);
-    // println!("{:?}", graph);
     Some(dfs_count_paths(&graph, "you", "out"))
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    // no longer acyclic! likely you can get from dac to fft and vice versa
     let graph = parse_input(input);
 
+    // we can simply enumerate all paths svr -> dac -> fft -> out and
+    // svr -> fft -> dac -> out; the result is the sum between the two.
     let svr_to_dac = dfs_count_paths(&graph, "svr", "dac");
     let svr_to_fft = dfs_count_paths(&graph, "svr", "fft");
     let dac_to_fft = dfs_count_paths(&graph, "dac", "fft");
