@@ -1,11 +1,9 @@
 use core::fmt;
-use std::{
-    cmp::min,
-    collections::{HashSet, VecDeque},
-    num::ParseIntError,
-};
+use std::collections::{HashSet, VecDeque};
 
 advent_of_code::solution!(10);
+
+type Action = Vec<usize>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Lights {
@@ -54,7 +52,7 @@ impl std::str::FromStr for Lights {
 }
 
 impl Lights {
-    fn apply_action(&self, action: &Vec<usize>) -> Self {
+    fn apply_action(&self, action: &Action) -> Self {
         let mut state = self.s;
         for l in action.iter() {
             state ^= 1 << l;
@@ -66,14 +64,14 @@ impl Lights {
     }
 }
 
-fn bfs(initial: &Lights, goal: &Lights, actions: &Vec<Vec<usize>>) -> u64 {
+fn bfs(initial: &Lights, goal: &Lights, actions: &[Action]) -> u64 {
     let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back((*initial, 0));
 
     while let Some((state, count)) = queue.pop_front() {
         for a in actions.iter() {
-            let s_next = state.apply_action(&a);
+            let s_next = state.apply_action(a);
             if s_next == *goal {
                 return count + 1;
             }
@@ -85,7 +83,7 @@ fn bfs(initial: &Lights, goal: &Lights, actions: &Vec<Vec<usize>>) -> u64 {
     unreachable!("Could not reach goal!")
 }
 
-fn parse_input(input: &str) -> (Vec<Lights>, Vec<Vec<Vec<usize>>>, Vec<Vec<u64>>) {
+fn parse_input(input: &str) -> (Vec<Lights>, Vec<Vec<Action>>, Vec<Vec<u64>>) {
     let mut goals = Vec::new();
     let mut actions = Vec::new();
     let mut joltages = Vec::new();
