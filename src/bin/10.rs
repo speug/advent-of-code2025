@@ -254,6 +254,8 @@ fn actions_to_matrix(A: &Vec<Vec<usize>>, n: usize) -> Matrix2D {
     out
 }
 
+fn matrix_vector_product(A: &Matrix2D, x: &Vec<i64>) ->
+
 pub fn part_two(input: &str) -> Option<u64> {
     let (_, actions, joltages) = parse_input(input);
     let ji = 0;
