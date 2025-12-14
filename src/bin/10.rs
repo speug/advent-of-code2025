@@ -243,10 +243,10 @@ fn hnf(A: &Matrix2D) -> (Matrix2D, Matrix2D) {
     (transpose2(H), transpose2(U))
 }
 
-fn actions_to_matrix(A: &Vec<Vec<usize>>, n: usize) -> Matrix2D {
-    let m = A.len();
+fn actions_to_matrix(a: &Vec<Vec<usize>>, n: usize) -> Matrix2D {
+    let m = a.len();
     let mut out = vec![vec![0; m]; n];
-    for (i, actions) in A.iter().enumerate() {
+    for (i, actions) in a.iter().enumerate() {
         for &action in actions.iter() {
             out[action][i] = 1;
         }
@@ -254,35 +254,189 @@ fn actions_to_matrix(A: &Vec<Vec<usize>>, n: usize) -> Matrix2D {
     out
 }
 
-// fn matrix_vector_product(A: &Matrix2D, x: &Vec<i64>) ->
+fn matrix_vector_product(A: &Matrix2D, x: &Vec<i64>) -> Vec<i64> {
+    assert!(A[0].len() == x.len(), "Need to have equal length columns");
+    A.iter()
+        .map(|row| row.iter().zip(x.iter()).map(|(a, b)| a * b).sum())
+        .collect()
+}
+
+fn solve_y_initial(h: &Matrix2D, j: &Vec<u64>) -> Option<(Vec<i64>, Vec<usize>)> {
+    let rows = h.len();
+    let cols = h[0].len();
+    let mut y = vec![None; cols];
+
+    for r in 0..rows {
+        let mut sum = 0;
+        let mut pivot_col = None;
+        let mut pivot_val = 0;
+
+        for c in 0..cols {
+            let val = h[r][c];
+            if val == 0 {
+                continue;
+            }
+
+            if pivot_col.is_none() {
+                pivot_col = Some(c);
+                pivot_val = val;
+            } else {
+                if let Some(known_y) = y[c] {
+                    sum += val * known_y;
+                } else {
+                    println!("Wasn't triangular!");
+                    return None;
+                }
+            }
+        }
+        let target = j[r] as i64 - sum;
+        match pivot_col {
+            Some(c) => {
+                if let Some(exiting_y) = y[c] {
+                    if pivot_val * exiting_y != target {
+                        println!(
+                            "HNF conflict at row {}: {} * {} != {}",
+                            r, exiting_y, pivot_val, target
+                        );
+                        return None;
+                    }
+                } else {
+                    if target % pivot_val != 0 {
+                        println!("No integer solution!");
+                        return None;
+                    }
+                    y[c] = Some(target / pivot_val);
+                }
+            }
+            None => {
+                if target != 0 {
+                    println!("No integer solution!");
+                    return None;
+                }
+            }
+        }
+    }
+    let mut solution = Vec::with_capacity(cols);
+    let mut free_vars = Vec::new();
+
+    for (i, val_opt) in y.into_iter().enumerate() {
+        match val_opt {
+            Some(val) => solution.push(val),
+            None => {
+                solution.push(0);
+                free_vars.push(i);
+            }
+        }
+    }
+    Some((solution, free_vars))
+}
 
 pub fn part_two(input: &str) -> Option<u64> {
     let (_, actions, joltages) = parse_input(input);
-    let ji = 0;
-    let m = joltages[ji].len();
-    let a = actions_to_matrix(&actions[ji], m);
-
-    for row in a.iter() {
-        println!("{:?}", row);
-    }
-    println!("--------------");
-    let (h, u) = hnf(&a);
-    for row in h.iter() {
-        println!("{:?}", row);
-    }
-    println!("--------------");
-    for row in u.iter() {
-        println!("{:?}", row);
-    }
-    let mut y = vec![0; m];
-    for i in 0..m {
-        let mut hsum = 0;
-        for j in 0..i {
-            hsum += y[j] * h[i][j];
+    let mut asd = 0;
+    for (accs, jolts) in iter::zip(actions, joltages) {
+        asd += 1;
+        if asd > 4 {
+            break;
         }
-        y[i] = (joltages[ji][i] as i64 - hsum) / h[i][i];
+        let m = jolts.len();
+        let a = actions_to_matrix(&accs, m);
+        let (h, u) = hnf(&a);
+        let mut y = vec![0; m];
+        if let Some((y_p, free_vars)) = solve_y_initial(&h, &jolts) {
+            if free_vars.is_empty() {
+                println!("Overdetermined system, solution is y = {:?}", y_p);
+            } else {
+                println!("Free vars: {}", free_vars.len());
+            }
+        } else {
+            println!("Could not solve system!");
+            println!("--------------");
+            println!("H = ");
+            for row in h.iter() {
+                println!("{:?}", row);
+            }
+            println!("--------------");
+            println!("U = ");
+            for row in u.iter() {
+                println!("{:?}", row);
+            }
+        }
+        //        println!("--------------");
+        //        println!("H = ");
+        //        for row in h.iter() {
+        //            println!("{:?}", row);
+        //        }
+        //        println!("--------------");
+        //        println!("U = ");
+        //        for row in u.iter() {
+        //            println!("{:?}", row);
+        //        }
     }
-    println!("Particular solution: {:?}", y);
+    //    let ji = 0;
+    //    let a = actions_to_matrix(&actions[ji], m);
+    //
+    //    println!("A = ");
+    //    for row in a.iter() {
+    //        println!("{:?}", row);
+    //    }
+    //    println!("--------------");
+    //    println!("H = ");
+    //    let (h, u) = hnf(&a);
+    //    for row in h.iter() {
+    //        println!("{:?}", row);
+    //    }
+    //    println!("--------------");
+    //    println!("U = ");
+    //    for row in u.iter() {
+    //        println!("{:?}", row);
+    //    }
+    //    let mut y = vec![0; m];
+    //    let mut free_vars = Vec::new();
+    //    for i in 0..m {
+    //        let mut hsum = 0;
+    //        for j in 0..i {
+    //            hsum += y[j] * h[i][j];
+    //        }
+    //        let numerator = joltages[ji][i] as i64 - hsum;
+    //        if (h[i][i] == 0) && (numerator == 0) {
+    //            free_vars.push(i);
+    //            continue;
+    //        } else {
+    //            y[i] = (numerator) / h[i][i];
+    //        }
+    //    }
+    //    for i in y.len()..u[0].len() {
+    //        free_vars.push(i);
+    //        y.push(0);
+    //    }
+    //    println!("Free vars: {:?}", free_vars);
+    //    println!("Particular y solution: {:?}", y);
+    //    let x = matrix_vector_product(&u, &y);
+    //    println!("Particular x solution (Uy = x): {:?}", x);
+    //    println!("Ax = {:?}", matrix_vector_product(&a, &x));
+    //    y[4] = 3;
+    //    println!("Particular y solution: {:?}", y);
+    //    let x = matrix_vector_product(&u, &y);
+    //    println!("Particular x solution (Uy = x): {:?}", x);
+    //    println!("Ax = {:?}", matrix_vector_product(&a, &x));
+    //    // find limits for valid solutions
+    //    for k1 in -10..10 {
+    //        // for k2 in -10..10 {
+    //        let mut yi = y.clone();
+    //        yi[4] = k1;
+    //        // yi[5] = k2;
+    //        let xi = matrix_vector_product(&u, &yi);
+    //        if xi.iter().all(|&a| a >= 0) {
+    //            println!(
+    //                "Found valid x={:?} ({}) Ax = {:?}",
+    //                xi,
+    //                xi.iter().sum::<i64>(),
+    //                matrix_vector_product(&a, &xi)
+    //            );
+    //        }
+    //        //}
+    //    }
     Some(0)
 }
 
