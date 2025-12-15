@@ -1,8 +1,6 @@
 use core::fmt;
-use std::{
-    collections::{HashSet, VecDeque},
-    iter,
-};
+use itertools::Itertools;
+use std::collections::{HashSet, VecDeque};
 
 advent_of_code::solution!(10);
 
@@ -127,8 +125,8 @@ type Matrix2D = Vec<Vec<i64>>;
 
 fn identity_matrix(n: usize) -> Matrix2D {
     let mut out = vec![vec![0; n]; n];
-    for i in 0..n {
-        out[i][i] = 1;
+    for (i, row) in out.iter_mut().enumerate() {
+        row[i] = 1;
     }
     out
 }
@@ -147,28 +145,28 @@ fn extended_gcd(a: i64, b: i64) -> (i64, i64, i64) {
     (g, u, v)
 }
 
-fn swap_column(M: &mut Matrix2D, c1: usize, c2: usize) {
+fn swap_column(m: &mut Matrix2D, c1: usize, c2: usize) {
     // matrix has columns for rows
-    M.swap(c1, c2);
+    m.swap(c1, c2);
 }
 
-fn update_column(M: &mut Matrix2D, col1: usize, col2: usize, u: i64, v: i64, c1: i64, c2: i64) {
-    for i in 0..M[0].len() {
-        let val_a = M[col1][i];
-        let val_b = M[col2][i];
+fn update_column(m: &mut Matrix2D, col1: usize, col2: usize, u: i64, v: i64, c1: i64, c2: i64) {
+    for i in 0..m[0].len() {
+        let val_a = m[col1][i];
+        let val_b = m[col2][i];
 
-        M[col1][i] = (u * val_a) + (v * val_b);
-        M[col2][i] = (c1 * val_a) + (c2 * val_b);
+        m[col1][i] = (u * val_a) + (v * val_b);
+        m[col2][i] = (c1 * val_a) + (c2 * val_b);
     }
 }
 
-fn multiply_column(M: &mut Matrix2D, col: usize, mult: i64) {
-    M[col].iter_mut().for_each(|x| *x *= mult);
+fn multiply_column(m: &mut Matrix2D, col: usize, mult: i64) {
+    m[col].iter_mut().for_each(|x| *x *= mult);
 }
 
-fn subtract_column(M: &mut Matrix2D, col1: usize, col2: usize, factor: i64) {
-    for i in 0..M[0].len() {
-        M[col1][i] -= M[col2][i] * factor;
+fn subtract_column(m: &mut Matrix2D, col1: usize, col2: usize, factor: i64) {
+    for i in 0..m[0].len() {
+        m[col1][i] -= m[col2][i] * factor;
     }
 }
 
@@ -186,18 +184,18 @@ fn transpose2<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
         .collect()
 }
 
-fn hnf(A: &Matrix2D) -> (Matrix2D, Matrix2D) {
-    let n = A.len();
-    let m = A[0].len();
-    let mut U = identity_matrix(m);
-    let mut H = transpose2(A.to_vec());
+fn hnf(a: &Matrix2D) -> (Matrix2D, Matrix2D) {
+    let n = a.len();
+    let m = a[0].len();
+    let mut u = identity_matrix(m);
+    let mut h = transpose2(a.to_vec());
 
     let mut current_col = 0;
     for i in 0..n {
         // 1. pivot selection; need a row with a non-zero elem right of curr_col
         let mut pivot_col = None;
-        for k in current_col..m {
-            if H[k][i] != 0 {
+        for (k, hrow) in h.iter().enumerate().skip(current_col) {
+            if hrow[i] != 0 {
                 pivot_col = Some(k);
                 break;
             }
@@ -208,42 +206,42 @@ fn hnf(A: &Matrix2D) -> (Matrix2D, Matrix2D) {
         }
 
         let k = pivot_col.unwrap();
-        swap_column(&mut H, current_col, k);
-        swap_column(&mut U, current_col, k);
+        swap_column(&mut h, current_col, k);
+        swap_column(&mut u, current_col, k);
 
         // 2. elimination
         for j in current_col + 1..m {
-            if H[j][i] != 0 {
-                let pivot = H[current_col][i];
-                let target = H[j][i];
+            if h[j][i] != 0 {
+                let pivot = h[current_col][i];
+                let target = h[j][i];
 
-                let (g, u, v) = extended_gcd(pivot, target);
+                let (g, x, y) = extended_gcd(pivot, target);
                 let c1 = -target / g;
                 let c2 = pivot / g;
 
-                update_column(&mut H, current_col, j, u, v, c1, c2);
-                update_column(&mut U, current_col, j, u, v, c1, c2);
+                update_column(&mut h, current_col, j, x, y, c1, c2);
+                update_column(&mut u, current_col, j, x, y, c1, c2);
             }
         }
 
         // 3. modulo reduction
-        let mut pivot_val = H[current_col][i];
+        let mut pivot_val = h[current_col][i];
         if pivot_val < 0 {
-            multiply_column(&mut H, current_col, -1);
-            multiply_column(&mut U, current_col, -1);
+            multiply_column(&mut h, current_col, -1);
+            multiply_column(&mut u, current_col, -1);
             pivot_val = -pivot_val;
         }
         for c in 0..current_col {
-            let factor = H[c][i].div_euclid(pivot_val);
-            subtract_column(&mut H, c, current_col, factor);
-            subtract_column(&mut U, c, current_col, factor);
+            let factor = h[c][i].div_euclid(pivot_val);
+            subtract_column(&mut h, c, current_col, factor);
+            subtract_column(&mut u, c, current_col, factor);
         }
         current_col += 1;
     }
-    (transpose2(H), transpose2(U))
+    (transpose2(h), transpose2(u))
 }
 
-fn actions_to_matrix(a: &Vec<Vec<usize>>, n: usize) -> Matrix2D {
+fn actions_to_matrix(a: &[Vec<usize>], n: usize) -> Matrix2D {
     let m = a.len();
     let mut out = vec![vec![0; m]; n];
     for (i, actions) in a.iter().enumerate() {
@@ -254,14 +252,14 @@ fn actions_to_matrix(a: &Vec<Vec<usize>>, n: usize) -> Matrix2D {
     out
 }
 
-fn matrix_vector_product(A: &Matrix2D, x: &Vec<i64>) -> Vec<i64> {
-    assert!(A[0].len() == x.len(), "Need to have equal length columns");
-    A.iter()
+fn matrix_vector_product(a: &Matrix2D, x: &[i64]) -> Vec<i64> {
+    assert!(a[0].len() == x.len(), "Need to have equal length columns");
+    a.iter()
         .map(|row| row.iter().zip(x.iter()).map(|(a, b)| a * b).sum())
         .collect()
 }
 
-fn solve_y_initial(h: &Matrix2D, j: &Vec<u64>) -> Option<(Vec<i64>, Vec<usize>)> {
+fn solve_y_initial(h: &Matrix2D, j: &[u64]) -> Option<(Vec<i64>, Vec<usize>)> {
     let rows = h.len();
     let cols = h[0].len();
     let mut y = vec![None; cols];
@@ -276,17 +274,14 @@ fn solve_y_initial(h: &Matrix2D, j: &Vec<u64>) -> Option<(Vec<i64>, Vec<usize>)>
             if val == 0 {
                 continue;
             }
-
-            if pivot_col.is_none() {
+            if let Some(known_y) = y[c] {
+                sum += val * known_y;
+            } else if pivot_col.is_none() {
                 pivot_col = Some(c);
                 pivot_val = val;
             } else {
-                if let Some(known_y) = y[c] {
-                    sum += val * known_y;
-                } else {
-                    println!("Wasn't triangular!");
-                    return None;
-                }
+                println!("Wasn't triangular!");
+                return None;
             }
         }
         let target = j[r] as i64 - sum;
@@ -331,23 +326,190 @@ fn solve_y_initial(h: &Matrix2D, j: &Vec<u64>) -> Option<(Vec<i64>, Vec<usize>)>
     Some((solution, free_vars))
 }
 
+fn gaussian_solver(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Option<Vec<f64>> {
+    let n = b.len();
+
+    for i in 0..n {
+        // pick pivot
+        let mut pivot_row = i;
+        for j in i + 1..n {
+            if a[i][j].abs() > a[pivot_row][i].abs() {
+                pivot_row = j;
+            }
+        }
+        a.swap(i, pivot_row);
+        b.swap(i, pivot_row);
+
+        if a[i][i].abs() < 1e-9 {
+            return None;
+        }
+
+        // eliminate
+        for j in i + 1..n {
+            let factor = a[j][i] / a[i][i];
+            b[j] -= factor * b[i];
+            #[allow(clippy::needless_range_loop)] // no idea how to do this with iters...
+            for k in i..n {
+                a[j][k] -= factor * a[i][k];
+            }
+        }
+    }
+
+    // back substitution
+    let mut x = vec![0.0; n];
+    for i in (0..n).rev() {
+        let mut sum = 0.0;
+        for j in i + 1..n {
+            sum += x[j] * a[i][j];
+        }
+        x[i] = (b[i] - sum) / a[i][i];
+    }
+    Some(x)
+}
+
+fn find_bounds(x_base: &[i64], u_null: &Matrix2D) -> Vec<(i64, i64)> {
+    let num_constraints = x_base.len();
+    let num_vars = u_null[0].len();
+
+    let xf: Vec<f64> = x_base.iter().map(|&x| x as f64).collect();
+    let uf: Vec<Vec<f64>> = u_null
+        .iter()
+        .map(|row| row.iter().map(|&x| x as f64).collect())
+        .collect();
+
+    let mut max_bounds = vec![f64::NEG_INFINITY; num_vars];
+    let mut min_bounds = vec![f64::INFINITY; num_vars];
+    let mut found_bounds = false;
+
+    let combos = (0..num_constraints).combinations(num_vars);
+    for indices in combos {
+        let mut a = Vec::with_capacity(num_vars);
+        let mut b = Vec::with_capacity(num_vars);
+
+        for idx in indices {
+            a.push(uf[idx].clone());
+            b.push(-xf[idx]);
+        }
+        if let Some(k_candidate) = gaussian_solver(a, b) {
+            let mut valid = true;
+            for r in 0..num_constraints {
+                let mut val = xf[r];
+                for v in 0..num_vars {
+                    val += uf[r][v] * k_candidate[v];
+                }
+                if val < -0.001 {
+                    valid = false;
+                    break;
+                }
+            }
+            if valid {
+                found_bounds = true;
+                for v in 0..num_vars {
+                    if k_candidate[v] < min_bounds[v] {
+                        min_bounds[v] = k_candidate[v]
+                    };
+                    if k_candidate[v] > max_bounds[v] {
+                        max_bounds[v] = k_candidate[v]
+                    };
+                }
+            }
+        }
+    }
+    if !found_bounds {
+        println!("Warning! Did not find bounds.");
+        return vec![(-200, 200); num_vars];
+    }
+
+    let mut out = Vec::new();
+    for v in 0..num_vars {
+        let min_val = if min_bounds[v].is_infinite() {
+            -1000
+        } else {
+            min_bounds[v] as i64 - 30
+        };
+        let max_val = if max_bounds[v].is_infinite() {
+            1000
+        } else {
+            max_bounds[v] as i64 + 30
+        };
+        out.push((min_val, max_val));
+    }
+    out
+}
+
+fn recursive_search(
+    depth: usize,
+    current_k: &mut Vec<i64>,
+    bounds: &Vec<(i64, i64)>,
+    u: &Matrix2D,
+    y_p: &Vec<i64>,
+    free_vars: &Vec<usize>,
+    best_sum: &mut u64,
+) {
+    if depth == bounds.len() {
+        let mut final_y = y_p.clone();
+
+        for (i, &var_idx) in free_vars.iter().enumerate() {
+            final_y[var_idx] = current_k[i];
+        }
+
+        let x_candidate = matrix_vector_product(u, &final_y);
+        if x_candidate.iter().all(|&x| x >= 0) {
+            let s: u64 = x_candidate.iter().map(|&x| x as u64).sum();
+            if s < *best_sum {
+                *best_sum = s;
+            }
+        }
+        return;
+    }
+    let (start, end) = bounds[depth];
+    for val in start..=end {
+        current_k[depth] = val;
+        recursive_search(depth + 1, current_k, bounds, u, y_p, free_vars, best_sum);
+    }
+}
+
 pub fn part_two(input: &str) -> Option<u64> {
     let (_, actions, joltages) = parse_input(input);
-    let mut asd = 0;
-    for (accs, jolts) in iter::zip(actions, joltages) {
-        asd += 1;
-        if asd > 4 {
-            break;
-        }
+    let mut sum_of_bests = 0;
+    for (accs, jolts) in std::iter::zip(actions, joltages) {
         let m = jolts.len();
+        // solve Hermitian normal form for A
         let a = actions_to_matrix(&accs, m);
         let (h, u) = hnf(&a);
-        let mut y = vec![0; m];
         if let Some((y_p, free_vars)) = solve_y_initial(&h, &jolts) {
             if free_vars.is_empty() {
-                println!("Overdetermined system, solution is y = {:?}", y_p);
+                // solution was unique; no need to search more
+                let x_unique = matrix_vector_product(&u, &y_p);
+                sum_of_bests += x_unique.iter().sum::<i64>() as u64;
             } else {
-                println!("Free vars: {}", free_vars.len());
+                /* The involved bit.
+                  1. Find particular solution y_p from H y_p = jolts, x_base = Uy_p
+                  2. Extract null basis U_null from U
+                  3. Solve U_null y >= -x_base to get vertices of the solution polygon
+                     (with +- 30(!) to really consider all possibilities)
+                  4. Iterate through all possibilities to find the best solution
+                */
+                let x_base = matrix_vector_product(&u, &y_p);
+                let mut u_null = Vec::new();
+                for &var_idx in &free_vars {
+                    let basis_vector: Vec<i64> = u.iter().map(|row| row[var_idx]).collect();
+                    u_null.push(basis_vector);
+                }
+                u_null = transpose2(u_null);
+                let k_bounds = find_bounds(&x_base, &u_null);
+                let mut current_k = vec![0; free_vars.len()];
+                let mut best_sum = u64::MAX;
+                recursive_search(
+                    0,
+                    &mut current_k,
+                    &k_bounds,
+                    &u,
+                    &y_p,
+                    &free_vars,
+                    &mut best_sum,
+                );
+                sum_of_bests += best_sum;
             }
         } else {
             println!("Could not solve system!");
@@ -362,82 +524,8 @@ pub fn part_two(input: &str) -> Option<u64> {
                 println!("{:?}", row);
             }
         }
-        //        println!("--------------");
-        //        println!("H = ");
-        //        for row in h.iter() {
-        //            println!("{:?}", row);
-        //        }
-        //        println!("--------------");
-        //        println!("U = ");
-        //        for row in u.iter() {
-        //            println!("{:?}", row);
-        //        }
     }
-    //    let ji = 0;
-    //    let a = actions_to_matrix(&actions[ji], m);
-    //
-    //    println!("A = ");
-    //    for row in a.iter() {
-    //        println!("{:?}", row);
-    //    }
-    //    println!("--------------");
-    //    println!("H = ");
-    //    let (h, u) = hnf(&a);
-    //    for row in h.iter() {
-    //        println!("{:?}", row);
-    //    }
-    //    println!("--------------");
-    //    println!("U = ");
-    //    for row in u.iter() {
-    //        println!("{:?}", row);
-    //    }
-    //    let mut y = vec![0; m];
-    //    let mut free_vars = Vec::new();
-    //    for i in 0..m {
-    //        let mut hsum = 0;
-    //        for j in 0..i {
-    //            hsum += y[j] * h[i][j];
-    //        }
-    //        let numerator = joltages[ji][i] as i64 - hsum;
-    //        if (h[i][i] == 0) && (numerator == 0) {
-    //            free_vars.push(i);
-    //            continue;
-    //        } else {
-    //            y[i] = (numerator) / h[i][i];
-    //        }
-    //    }
-    //    for i in y.len()..u[0].len() {
-    //        free_vars.push(i);
-    //        y.push(0);
-    //    }
-    //    println!("Free vars: {:?}", free_vars);
-    //    println!("Particular y solution: {:?}", y);
-    //    let x = matrix_vector_product(&u, &y);
-    //    println!("Particular x solution (Uy = x): {:?}", x);
-    //    println!("Ax = {:?}", matrix_vector_product(&a, &x));
-    //    y[4] = 3;
-    //    println!("Particular y solution: {:?}", y);
-    //    let x = matrix_vector_product(&u, &y);
-    //    println!("Particular x solution (Uy = x): {:?}", x);
-    //    println!("Ax = {:?}", matrix_vector_product(&a, &x));
-    //    // find limits for valid solutions
-    //    for k1 in -10..10 {
-    //        // for k2 in -10..10 {
-    //        let mut yi = y.clone();
-    //        yi[4] = k1;
-    //        // yi[5] = k2;
-    //        let xi = matrix_vector_product(&u, &yi);
-    //        if xi.iter().all(|&a| a >= 0) {
-    //            println!(
-    //                "Found valid x={:?} ({}) Ax = {:?}",
-    //                xi,
-    //                xi.iter().sum::<i64>(),
-    //                matrix_vector_product(&a, &xi)
-    //            );
-    //        }
-    //        //}
-    //    }
-    Some(0)
+    Some(sum_of_bests)
 }
 
 #[cfg(test)]
@@ -447,12 +535,12 @@ mod tests {
     #[test]
     fn test_part_one() {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(7));
+        assert_eq!(result, Some(12));
     }
 
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(463));
     }
 }
