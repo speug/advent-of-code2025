@@ -491,12 +491,13 @@ pub fn part_two(input: &str) -> Option<u64> {
                   4. Iterate through all possibilities to find the best solution
                 */
                 let x_base = matrix_vector_product(&u, &y_p);
-                let mut u_null = Vec::new();
-                for &var_idx in &free_vars {
-                    let basis_vector: Vec<i64> = u.iter().map(|row| row[var_idx]).collect();
-                    u_null.push(basis_vector);
+                // pick null columns from u
+                let mut u_null = vec![vec![0; free_vars.len()]; u.len()];
+                for (i, &var_idx) in free_vars.iter().enumerate() {
+                    for j in 0..u.len() {
+                        u_null[j][i] = u[j][var_idx];
+                    }
                 }
-                u_null = transpose2(u_null);
                 let k_bounds = find_bounds(&x_base, &u_null);
                 let mut current_k = vec![0; free_vars.len()];
                 let mut best_sum = u64::MAX;
