@@ -1,6 +1,9 @@
-use core::fmt;
+use core::{f64, fmt};
 use itertools::Itertools;
-use std::collections::{HashSet, VecDeque};
+use std::{
+    collections::{BinaryHeap, HashSet, VecDeque},
+    u64,
+};
 
 advent_of_code::solution!(10);
 
@@ -437,6 +440,58 @@ fn find_bounds(x_base: &[i64], u_null: &Matrix2D) -> Vec<(i64, i64)> {
     out
 }
 
+fn find_best_vertex(x_base: &[i64], u_null: &Matrix2D) -> Option<Vec<f64>> {
+    let num_constraints = x_base.len();
+    let num_vars = u_null[0].len();
+
+    let xf: Vec<f64> = x_base.iter().map(|&x| x as f64).collect();
+    let uf: Vec<Vec<f64>> = u_null
+        .iter()
+        .map(|row| row.iter().map(|&x| x as f64).collect())
+        .collect();
+
+    let mut found_candidate = false;
+    let mut best_sum = f64::INFINITY;
+    let mut best_candidate = None;
+
+    let combos = (0..num_constraints).combinations(num_vars);
+    for indices in combos {
+        let mut a = Vec::with_capacity(num_vars);
+        let mut b = Vec::with_capacity(num_vars);
+
+        for idx in indices {
+            a.push(uf[idx].clone());
+            b.push(-xf[idx]);
+        }
+        if let Some(k_candidate) = gaussian_solver(a, b) {
+            let mut valid = true;
+            let mut s = 0.0;
+            for r in 0..num_constraints {
+                let mut val = xf[r];
+                for v in 0..num_vars {
+                    val += uf[r][v] * k_candidate[v];
+                    s += xf[r] + uf[r][v] * k_candidate[v]
+                }
+                if val < -0.001 {
+                    valid = false;
+                    break;
+                }
+            }
+            if valid {
+                if s < best_sum {
+                    best_sum = s;
+                    best_candidate = Some(k_candidate);
+                }
+            }
+        }
+    }
+    if best_candidate.is_none() {
+        // println!("Warning! Did not find a float candidate.");
+        return None;
+    }
+    best_candidate
+}
+
 fn recursive_search(
     depth: usize,
     current_k: &mut Vec<i64>,
@@ -469,6 +524,35 @@ fn recursive_search(
     }
 }
 
+fn distance(x: &[f64], y: &[f64]) -> i64 {
+    assert!(x.len() == y.len(), "Vectors must be the same length!");
+    x.iter()
+        .zip(y)
+        .map(|(a, b)| (a - b).abs().round() as i64)
+        .sum()
+}
+
+fn generate_neighbors(center: &[i64]) -> Vec<Vec<i64>> {
+    let mut neighbors = Vec::new();
+    let mut current_k = center.to_vec();
+
+    fn inner(depth: usize, center: &[i64], current_k: &mut Vec<i64>, results: &mut Vec<Vec<i64>>) {
+        if depth == center.len() {
+            if current_k != center {
+                results.push(current_k.clone());
+            }
+            return;
+        }
+        for delta in -1..=1 {
+            current_k[depth] = center[depth] + delta;
+            inner(depth + 1, center, current_k, results);
+        }
+        current_k[depth] = center[depth];
+    }
+    inner(0, center, &mut current_k, &mut neighbors);
+    neighbors
+}
+
 pub fn part_two(input: &str) -> Option<u64> {
     let (_, actions, joltages) = parse_input(input);
     let mut sum_of_bests = 0;
@@ -498,19 +582,47 @@ pub fn part_two(input: &str) -> Option<u64> {
                         u_null[j][i] = u[j][var_idx];
                     }
                 }
-                let k_bounds = find_bounds(&x_base, &u_null);
-                let mut current_k = vec![0; free_vars.len()];
-                let mut best_sum = u64::MAX;
-                recursive_search(
-                    0,
-                    &mut current_k,
-                    &k_bounds,
-                    &u,
-                    &y_p,
-                    &free_vars,
-                    &mut best_sum,
-                );
-                sum_of_bests += best_sum;
+                if let Some(best_k) = find_best_vertex(&x_base, &u_null) {
+                    let initial_k: Vec<f64> = best_k.iter().map(|&x| x.floor()).collect();
+                    let mut check_values = HashSet::new();
+                    let mut queue = BinaryHeap::new();
+                    let ik = initial_k.iter().map(|&x| x as i64).collect::<Vec<i64>>();
+                    check_values.insert(ik.clone());
+                    queue.push((-distance(&best_k, &initial_k), ik.clone()));
+
+                    let mut best_sum = u64::MAX;
+
+                    while let Some((_, k_candidate)) = queue.pop() {
+                        let y = matrix_vector_product(&u_null, &k_candidate);
+                        let x_p: Vec<i64> = x_base.iter().zip(y).map(|(&a, b)| a + b).collect();
+                        let is_positive = x_p.iter().all(|&x| x >= 0);
+                        let is_proper = matrix_vector_product(&a, &x_p)
+                            .iter()
+                            .zip(&jolts)
+                            .all(|(&a, &b)| a == b as i64);
+                        if is_positive && is_proper {
+                            let s = x_p.iter().sum::<i64>() as u64;
+                            if s < best_sum + 100 {
+                                if s < best_sum {
+                                    best_sum = s;
+                                }
+                                let neighbors: Vec<Vec<i64>> = generate_neighbors(&k_candidate)
+                                    .into_iter()
+                                    .filter(|k| !check_values.contains(k))
+                                    .collect();
+                                for neigh in neighbors {
+                                    let d = -distance(
+                                        &neigh.iter().map(|&x| x as f64).collect::<Vec<f64>>(),
+                                        &best_k,
+                                    );
+                                    queue.push((d, neigh.clone()));
+                                }
+                                check_values.insert(k_candidate.clone());
+                            }
+                        }
+                    }
+                    sum_of_bests += best_sum;
+                }
             }
         } else {
             println!("Could not solve system!");
