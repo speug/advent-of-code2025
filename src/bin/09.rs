@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::cmp::{max, min};
 
 advent_of_code::solution!(9);
@@ -40,25 +41,6 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(max_area)
 }
 
-fn form_shapes(points: &[Point]) -> Vec<Vec<Point>> {
-    let mut out = Vec::new();
-    let mut shape = Vec::new();
-    for p in points {
-        if shape.is_empty() {
-            shape.push(*p);
-        } else if shape[0] == *p {
-            out.push(shape.clone());
-            shape.clear();
-        } else {
-            shape.push(*p);
-        }
-    }
-    if !shape.is_empty() {
-        out.push(shape);
-    }
-    out
-}
-
 fn vertical_edge(p1: &Point, p2: &Point) -> bool {
     p1.x == p2.x
 }
@@ -75,13 +57,12 @@ fn point_in_shape(p: &Point, shape: &[Point]) -> bool {
         } else {
             &shape[0]
         };
-        if vertical_edge(pa, pb)
-            && (p.x == pa.x)
-            && (min(pa.y, pb.y) <= p.y)
-            && (p.y <= max(pa.y, pb.y))
-        {
-            return true;
-        } else if (p.y == pa.y) && (min(pa.x, pb.x) <= p.x) && (p.x <= max(pa.x, pb.x)) {
+        let vertical_contains =
+            (p.x == pa.x) && (min(pa.y, pb.y) <= p.y) && (p.y <= max(pa.y, pb.y));
+        let is_vertical = vertical_edge(pa, pb);
+        let horizontal_contains =
+            (p.y == pa.y) && (min(pa.x, pb.x) <= p.x) && (p.x <= max(pa.x, pb.x));
+        if (is_vertical && vertical_contains) || (!is_vertical && horizontal_contains) {
             return true;
         }
     }
@@ -94,118 +75,115 @@ fn point_in_shape(p: &Point, shape: &[Point]) -> bool {
         } else {
             &shape[0]
         };
-        if vertical_edge(pa, pb) {
-            if (p.x > pa.x) && (min(pa.y, pb.y) < p.y) && (p.y <= max(pa.y, pb.y)) {
-                crossings += 1;
-            }
+        if vertical_edge(pa, pb)
+            && (p.x > pa.x)
+            && (min(pa.y, pb.y) < p.y)
+            && (p.y <= max(pa.y, pb.y))
+        {
+            crossings += 1;
         }
     }
     crossings % 2 == 1
 }
 
-fn check_rectangle(p1: &Point, p2: &Point, shape: &[Point]) -> bool {
-    // generate edge points
-    let min_x = min(p1.x, p2.x);
-    let x_diff = max(p1.x, p2.x) - min_x + 1;
-    let min_y = min(p1.y, p2.y);
-    let y_diff = max(p1.y, p2.y) - min_y + 1;
-    // check horizontal 1
-    for p in (min_x..min_x + x_diff)
-        .zip(vec![p1.y; x_diff as usize])
-        .map(|(x, y)| Point { x: x, y: y })
-    {
-        if !point_in_shape(&p, shape) {
-            return false;
+type Edge = (Point, Point);
+fn generate_ranges(points: &[Point]) -> (Vec<Edge>, Vec<Edge>) {
+    let mut horizontal = Vec::new();
+    let mut vertical = Vec::new();
+    for (&p1, &p2) in points.iter().circular_tuple_windows() {
+        if p1.x == p2.x {
+            // vertical
+            let (low, high) = if p1.y < p2.y { (p1, p2) } else { (p2, p1) };
+            vertical.push((low, high));
+        } else {
+            let (low, high) = if p1.x < p2.x { (p1, p2) } else { (p2, p1) };
+            horizontal.push((low, high));
         }
     }
-    // check horizontal 2
-    for p in (min_x..min_x + x_diff)
-        .zip(vec![p2.y; x_diff as usize])
-        .map(|(x, y)| Point { x: x, y: y })
-    {
-        if !point_in_shape(&p, shape) {
-            return false;
-        }
-    }
-    // check vertical 1
-    for p in std::iter::repeat(p1.x)
-        .take(y_diff as usize)
-        .into_iter()
-        .zip(min_y..min_y + y_diff)
-        .map(|(x, y)| Point { x: x, y: y })
-    {
-        if !point_in_shape(&p, shape) {
-            return false;
-        }
-    }
-    // check vertical 2
-    for p in std::iter::repeat(p2.x)
-        .take(y_diff as usize)
-        .into_iter()
-        .zip(min_y..min_y + y_diff)
-        .map(|(x, y)| Point { x: x, y: y })
-    {
-        if !point_in_shape(&p, shape) {
-            return false;
-        }
-    }
-    true
+    (horizontal, vertical)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     let points = parse_input(input);
-    let shapes = form_shapes(&points);
-    let mut max_area = 0;
     /*
-    outline for a better solution:
+    outline for a solution:
     1. generate all "intersection points" with a vertical and horisontal sweep.
        This can be done efficiently with creating ordered lists of edge x and y coords
        Store these by the line being swept (i.e. in two Vecs). do not include corners?
     2. generate all rectangles, sort by area
     3. for each rectangle, check each edge of the rectangle for intersection points;
-       invalidate a rectangle if an edge contains an intersection point
+       invalidate a rectangle if an edge contains an intersection point OR if a corner
+       is out
     4. First valid rectangle wins.
     */
-
-    // uncomment below for solution, the BF solution is for tests to pass
-    // looking at the plot of the points, it is clear that only two points are real
-    // candidates for one of the corners
-    //    let cand1 = Point { x: 94693, y: 50233 };
-    //    let cand2 = Point { x: 94693, y: 48547 };
-    //    for p in shapes[0].iter().filter(|&p| p.y > cand1.y) {
-    //        if check_rectangle(&cand1, p, &shapes[0]) {
-    //            println!("Found valid rectangle: {:?} - {:?}", cand1, &p);
-    //            let area = cand1.area_with(p);
-    //            if area > max_area {
-    //                max_area = area
-    //            }
-    //        }
-    //    }
-    //    for p in shapes[0].iter().filter(|&p| p.y < cand2.y) {
-    //        if check_rectangle(&cand2, p, &shapes[0]) {
-    //            println!("Found valid rectangle: {:?} - {:?}", cand2, &p);
-    //            let area = cand2.area_with(p);
-    //            if area > max_area {
-    //                max_area = area
-    //            }
-    //        }
-    //    }
-    let n = shapes.len();
-    for (i, s) in shapes.iter().enumerate() {
-        println!("Checking shape {}/{}", i + 1, n);
-        for (i, &p1) in s.iter().enumerate() {
-            for &p2 in s.iter().skip(i + 1) {
-                if check_rectangle(&p1, &p2, s) {
-                    println!("Found valid rectangle: {:?} - {:?}", p1, p2);
-                    let area = p1.area_with(&p2);
-                    if area > max_area {
-                        max_area = area
-                    }
-                }
-            }
+    let (horizontal, vertical) = generate_ranges(&points);
+    let hmin = horizontal.iter().map(|&p| p.0.x).min().unwrap();
+    let hmax = horizontal.iter().map(|&p| p.1.x).max().unwrap();
+    let vmin = horizontal.iter().map(|&p| p.0.y).min().unwrap();
+    let vmax = horizontal.iter().map(|&p| p.1.y).max().unwrap();
+    let mut vert_crossings: Vec<Vec<i64>> = vec![Vec::new(); (hmax - hmin) as usize + 1];
+    let mut hor_crossings: Vec<Vec<i64>> = vec![Vec::new(); (vmax - vmin) as usize + 1];
+    for &(low, high) in horizontal.iter() {
+        for x in (low.x + 1)..high.x {
+            vert_crossings[(x - hmin) as usize].push(low.y);
         }
     }
-    Some(max_area)
+    for &(low, high) in vertical.iter() {
+        for y in (low.y + 1)..high.y {
+            hor_crossings[(y - vmin) as usize].push(low.x);
+        }
+    }
+    let mut rectangles = Vec::new();
+    for (i, p1) in points.iter().enumerate() {
+        for p2 in points.iter().skip(i + 1) {
+            let area = p1.area_with(p2);
+            rectangles.push((area, (*p1, *p2)));
+        }
+    }
+    rectangles.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+    'outer: for &(a, (p1, p2)) in rectangles.iter() {
+        let (ymin, ymax) = if p1.y < p2.y {
+            (p1.y, p2.y)
+        } else {
+            (p2.y, p1.y)
+        };
+        let (xmin, xmax) = if p1.x < p2.x {
+            (p1.x, p2.x)
+        } else {
+            (p2.x, p1.x)
+        };
+        // check that each of the other corners are inside (p1 and p2 always guaranteed
+        // to be inside)
+        if !point_in_shape(&Point { x: p1.x, y: p2.y }, &points) {
+            continue;
+        };
+        if !point_in_shape(&Point { x: p2.x, y: p1.y }, &points) {
+            continue;
+        };
+        // then check each edge for crossings
+        for &y in vert_crossings[(p1.x - hmin) as usize].iter() {
+            if (ymin < y) && (y < ymax) {
+                continue 'outer;
+            }
+        }
+        for &y in vert_crossings[(p2.x - hmin) as usize].iter() {
+            if (ymin < y) && (y < ymax) {
+                continue 'outer;
+            }
+        }
+        for &x in hor_crossings[(p1.y - vmin) as usize].iter() {
+            if (xmin < x) && (x < xmax) {
+                continue 'outer;
+            }
+        }
+        for &x in hor_crossings[(p2.y - vmin) as usize].iter() {
+            if (xmin < x) && (x < xmax) {
+                continue 'outer;
+            }
+        }
+        return Some(a);
+    }
+    unreachable!("Should find rectangle!")
 }
 
 #[cfg(test)]
