@@ -1,11 +1,15 @@
 use std::{collections::HashMap, iter};
 
+use itertools::interleave;
+use regex::Regex;
+
 advent_of_code::solution!(12);
 
 #[derive(Debug, Clone)]
 struct Shape {
     id: u8,
     tiles: Vec<(isize, isize)>,
+    area: u8,
 }
 
 struct Region {
@@ -59,6 +63,46 @@ impl Region {
             )
         }
     }
+}
+
+type Chargrid = Vec<Vec<char>>;
+fn parse_input(input: &str) -> (Vec<(u8, Chargrid)>, Vec<(usize, usize)>, Vec<Vec<u8>>) {
+    let mut shapes = Vec::new();
+    let mut gridsizes = Vec::new();
+    let mut requirements = Vec::new();
+    let mut blocks: Vec<&str> = input.split("\n\n").collect();
+    let grids = blocks.split_off(blocks.len() - 1);
+    let idre = Regex::new(r"(\d+):").unwrap();
+    let gridre = Regex::new(r"^(\d+)x(\d+): (.+)$").unwrap();
+    for block in blocks.into_iter() {
+        let mut shape = Vec::new();
+        let mut id = 0;
+        for (i, line) in block.lines().enumerate() {
+            if i == 0 {
+                let Some(captures) = idre.captures(line) else {
+                    panic!("No match!");
+                };
+                id = captures[1].parse::<u8>().unwrap();
+            } else {
+                shape.push(line.chars().collect::<Vec<char>>());
+            }
+        }
+        shapes.push((id, shape));
+    }
+    for gridline in grids.into_iter() {
+        let Some(captures) = gridre.captures(gridline) else {
+            panic!("Invalid grid line!");
+        };
+        let h = captures[1].parse::<usize>().unwrap();
+        let w = captures[2].parse::<usize>().unwrap();
+        gridsizes.push((h, w));
+        let reqs = captures[2]
+            .split_ascii_whitespace()
+            .map(|x| x.parse::<u8>().unwrap())
+            .collect();
+        requirements.push(reqs);
+    }
+    (shapes, gridsizes, requirements)
 }
 
 pub fn part_one(input: &str) -> Option<u64> {

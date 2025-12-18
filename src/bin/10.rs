@@ -524,6 +524,7 @@ pub fn part_two(input: &str) -> Option<u64> {
             for row in u.iter() {
                 println!("{:?}", row);
             }
+            panic!()
         }
     }
     Some(sum_of_bests)
