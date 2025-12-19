@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use advent_of_code::get_neighboring_indices_2d;
 use regex::Regex;
 
 advent_of_code::solution!(12);
@@ -78,6 +79,40 @@ impl Region {
             )
         }
     }
+
+    fn usable_area(&self) -> u8 {
+        fn inner(
+            grid: &Vec<Vec<i8>>,
+            h: &usize,
+            w: &usize,
+            area: &mut u8,
+            visited: &mut HashSet<(usize, usize)>,
+            i: usize,
+            j: usize,
+        ) {
+            visited.insert((i, j));
+            *area += 1;
+            let neighs = get_neighboring_indices_2d(i, j, h, w, false);
+            for &(ni, nj) in neighs.iter().filter(|(x, y)| grid[*x][*y] == -1) {
+                if !visited.contains(&(ni, nj)) {
+                    inner(grid, h, w, area, visited, ni, nj);
+                }
+            }
+            return;
+        }
+        let mut area = 0;
+        let mut visited = HashSet::new();
+        inner(
+            &self.grid,
+            &(self.h as usize),
+            &(self.w as usize),
+            &mut area,
+            &mut visited,
+            (self.h - 1) as usize,
+            (self.w - 1) as usize,
+        );
+        area
+    }
 }
 
 type Chargrid = Vec<Vec<char>>;
@@ -108,8 +143,8 @@ fn parse_input(input: &str) -> (Vec<(i8, Chargrid)>, Vec<(usize, usize)>, Vec<Ve
         let Some(captures) = gridre.captures(gridline) else {
             panic!("Invalid grid line! {gridline}");
         };
-        let h = captures[1].parse::<usize>().unwrap();
-        let w = captures[2].parse::<usize>().unwrap();
+        let w = captures[1].parse::<usize>().unwrap();
+        let h = captures[2].parse::<usize>().unwrap();
         gridsizes.push((h, w));
         let reqs = captures[3]
             .split_ascii_whitespace()
@@ -173,50 +208,102 @@ fn generate_shapes(mut chars: Chargrid, id: i8) -> Vec<Shape> {
     shapes
 }
 
-pub fn part_one(input: &str) -> Option<u64> {
-    let (shapegrids, gridsizes, requirements) = parse_input(input);
-    for (id, cgrid) in shapegrids.iter() {
-        println!("{}", id);
-        for row in cgrid.iter() {
-            println!("{:?}", row);
+fn solve(
+    gridsize: (usize, usize),
+    requirements: &Vec<u8>,
+    shapes: &HashMap<i8, Vec<Shape>>,
+) -> bool {
+    let mut reqs = requirements.clone();
+    let mut grid = Region::new(gridsize.0, gridsize.1);
+
+    fn next_hole(grid: &Region, curr_i: usize, curr_j: usize) -> Option<(isize, isize)> {
+        let (mut hi, mut hj) = (curr_i as usize, curr_j as usize);
+        if (hi == 0) && (hj == 0) {
+            return Some((hi as isize, hj as isize));
         }
-    }
-    for (gs, reqs) in gridsizes.iter().zip(requirements) {
-        println!("{}x{}: {:?}", gs.0, gs.1, reqs);
-    }
-    let mut shape_variants = HashMap::new();
-    for (id, cgrid) in shapegrids {
-        let shapes = generate_shapes(cgrid, id);
-        println!("{}", id);
-        println!("{:?}", shapes);
-        shape_variants.insert(id, shapes);
-    }
-    for (id, shapes) in shape_variants.iter() {
-        let n_unique = shapes.len();
-        let mut grid = if n_unique <= 4 {
-            Region::new(3, n_unique * 6)
-        } else {
-            Region::new(7, n_unique * 3)
-        };
-        for (i, shape) in shapes.iter().enumerate() {
-            let mut col = if i < 4 {
-                6 * i as isize
+        loop {
+            if hj < (grid.w - 1).try_into().unwrap() {
+                hj += 1;
+            } else if hi < (grid.h - 1).try_into().unwrap() {
+                hi += 1;
+                hj = 0;
             } else {
-                6 * (i as isize - 4)
-            };
-            let row = if i < 4 { 0 } else { 4 };
-            loop {
-                if grid.place_shape(row, col, shape.clone()) {
-                    break;
-                } else {
-                    col += 1;
+                break;
+            }
+            if grid.grid[hi][hj] == -1 {
+                return Some((hi.try_into().unwrap(), hj.try_into().unwrap()));
+            }
+        }
+        None
+    }
+
+    fn remaining_area(requirements: &Vec<u8>, shapes: &HashMap<i8, Vec<Shape>>) -> u8 {
+        let mut out = 0;
+        for (i, &req) in requirements.iter().enumerate() {
+            if req > 0 {
+                out += shapes.get(&(i as i8)).unwrap()[0].area;
+            }
+        }
+        out
+    }
+
+    fn inner(
+        grid: &mut Region,
+        reqs: &mut Vec<u8>,
+        shapes: &HashMap<i8, Vec<Shape>>,
+        curr_i: isize,
+        curr_j: isize,
+    ) -> bool {
+        if reqs.iter().all(|&x| x == 0) {
+            grid.print();
+            return true;
+        }
+        let Some((hi, hj)) = next_hole(grid, curr_i as usize, curr_j as usize) else {
+            return false;
+        };
+        let remaining_shapes: Vec<i8> = (0..reqs.len())
+            .filter(|&x| reqs[x] > 0)
+            .map(|x| x as i8)
+            .collect();
+        for shape_id in remaining_shapes.iter() {
+            if let Some(shapevec) = shapes.get(shape_id) {
+                for shape in shapevec {
+                    if grid.place_shape(hi, hj, shape.clone()) {
+                        reqs[*shape_id as usize] -= 1;
+                        if remaining_area(&reqs, &shapes) > grid.usable_area() {
+                            grid.remove_shape(hi as usize, hj as usize);
+                            reqs[*shape_id as usize] += 1;
+                        } else if !inner(grid, reqs, shapes, hi, hj) {
+                            grid.remove_shape(hi as usize, hj as usize);
+                            reqs[*shape_id as usize] += 1;
+                        } else {
+                            return true;
+                        }
+                    }
                 }
             }
         }
-        println!("{}", id);
-        grid.print();
+        inner(grid, reqs, shapes, hi, hj + 1)
     }
-    Some(0)
+
+    inner(&mut grid, &mut reqs, shapes, 0, 0)
+}
+
+pub fn part_one(input: &str) -> Option<u64> {
+    let (shapegrids, gridsizes, requirements) = parse_input(input);
+    let mut shape_variants = HashMap::new();
+    for (id, cgrid) in shapegrids {
+        let shapes = generate_shapes(cgrid, id);
+        shape_variants.insert(id, shapes);
+    }
+    let mut solvable = 0;
+    for (&gs, reqs) in gridsizes.iter().zip(requirements) {
+        if solve(gs, &reqs, &shape_variants) {
+            println!("{}x{}: {:?}", gs.0, gs.1, reqs);
+            solvable += 1;
+        }
+    }
+    Some(solvable)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
