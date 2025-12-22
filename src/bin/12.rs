@@ -328,13 +328,17 @@ mod tests {
 
     #[test]
     fn test_part_one() {
-        let result = part_one(&advent_of_code::template::read_file("examples", DAY));
+        let example = std::fs::read_to_string(
+            "/home/lauri/Documents/misc/advent-of-code2025/data/examples/12.txt",
+        )
+        .unwrap();
+        let result = part_one(example.as_str());
         assert_eq!(result, None);
     }
 
-    #[test]
-    fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
-    }
+    //    #[test]
+    //    fn test_part_two() {
+    //        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
+    //        assert_eq!(result, None);
+    //    }
 }
