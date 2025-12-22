@@ -28,6 +28,8 @@ dhat-heap.json
 # Benchmarks
 
 data/timings.json
+perf.data
+perf.data.old
 
 # Python
 .venv/*
