@@ -217,7 +217,9 @@ fn solve(
     let mut grid = Region::new(gridsize.0, gridsize.1);
 
     fn next_hole(grid: &Region, curr_i: usize, curr_j: usize) -> Option<(isize, isize)> {
+        // find next de Bruijn hole
         let (mut hi, mut hj) = (curr_i as usize, curr_j as usize);
+        // base case at the start
         if (hi == 0) && (hj == 0) {
             return Some((hi as isize, hj as isize));
         }
@@ -238,6 +240,7 @@ fn solve(
     }
 
     fn remaining_area(requirements: &Vec<u8>, shapes: &HashMap<i8, Vec<Shape>>) -> u8 {
+        // simple flood fill from bottom right corner (de Bruijn starts from top left so should work)
         let mut out = 0;
         for (i, &req) in requirements.iter().enumerate() {
             if req > 0 {
@@ -254,35 +257,44 @@ fn solve(
         curr_i: isize,
         curr_j: isize,
     ) -> bool {
+        // check if required shapes are placed
         if reqs.iter().all(|&x| x == 0) {
             grid.print();
             return true;
         }
+        // get next hole
         let Some((hi, hj)) = next_hole(grid, curr_i as usize, curr_j as usize) else {
             return false;
         };
+        // get ids of the remaining shapes
         let remaining_shapes: Vec<i8> = (0..reqs.len())
             .filter(|&x| reqs[x] > 0)
             .map(|x| x as i8)
             .collect();
         for shape_id in remaining_shapes.iter() {
             if let Some(shapevec) = shapes.get(shape_id) {
+                // shapevec now contains all rotations and flips of the polymino in question
                 for shape in shapevec {
                     if grid.place_shape(hi, hj, shape.clone()) {
                         reqs[*shape_id as usize] -= 1;
+                        // remaining area heuristic
                         if remaining_area(&reqs, &shapes) > grid.usable_area() {
                             grid.remove_shape(hi as usize, hj as usize);
                             reqs[*shape_id as usize] += 1;
-                        } else if !inner(grid, reqs, shapes, hi, hj) {
+                        // recursive call
+                        } else if !inner(grid, reqs, shapes, hi, hj + 1) {
+                            // could not solve, backtrack to next shape
                             grid.remove_shape(hi as usize, hj as usize);
                             reqs[*shape_id as usize] += 1;
                         } else {
+                            // inner function returned true, so must be solvable!
                             return true;
                         }
                     }
                 }
             }
         }
+        // could not place anything to this hole, move on to the next
         inner(grid, reqs, shapes, hi, hj + 1)
     }
 
